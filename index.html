@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>コーヒーマシン</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* 追加: 選択画面のスタイル（簡易） */
+    .container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      /* display: flex; align-items: center; justify-content: center; ← 削除 */
+    }
+    #main-panel, #select-panel {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      transition: opacity 0.5s;
+      will-change: opacity;
+      display: flex;
+      align-items: flex-end; /* ← ここをflex-endに変更 */
+      justify-content: center;
+    }
+    #main-panel {
+      flex-direction: column;
+      padding-bottom: 60px; /* ← ここで下余白を追加してさらに下寄せ */
+    }
+    #main-panel > .instruction,
+    #main-panel > .buttons {
+      /* 追加: パネル内要素を中央寄せ */
+      text-align: center;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      width: 100%;
+      height: 100%;
+    }
+    #main-panel.visible, #select-panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 2;
+      display: block;
+    }
+    #main-panel.hidden, #select-panel.hidden {
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+      display: block;
+    }
+    .select-panel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #6b6b6b; color: #fff; z-index: 10; }
+    .select-panel .select-title { font-size: 2em; font-weight: bold; text-align: center; margin-top: 60px; }
+    .select-panel .size-row { display: flex; justify-content: center; align-items: flex-end; margin: 40px 0 30px 0; gap: 80px;}
+    .select-panel .size-col { text-align: center; }
+    .select-panel .size-svg { display: block; margin: 0 auto 10px auto; }
+    .select-panel .size-label { font-size: 1.3em; font-weight: bold; }
+    .select-panel .divider { border: none; border-top: 3px solid #aaa; margin: 30px 0 30px 0; }
+    .select-panel .strength-row { display: flex; justify-content: center; align-items: center; gap: 60px; }
+    .select-panel .strength-col { text-align: center; }
+    .select-panel .strength-label { margin-bottom: 10px; }
+    .select-panel .strength-dot { width: 54px; height: 54px; border-radius: 50%; border: 5px solid #fff; margin: 0 auto 0 auto; }
+    .select-panel .strength-dot.weak { background: #7b635b; }
+    .select-panel .strength-dot.normal { background: #4d2d2d; }
+    .select-panel .strength-dot.strong { background: #231112; }
+    .select-panel .strength-line { height: 6px; width: 60px; background: #fff; display: inline-block; vertical-align: middle; margin: 0 0 18px 0; }
+    .select-panel .back-btn { position: absolute; top: 20px; left: 20px; background: #222; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 1em; cursor: pointer; }
+    .size-col.selected .size-svg rect,
+    .size-col.selected .size-svg {
+      stroke: #111 !important;
+    }
+    .size-col.selected .size-svg .cup-outline {
+      stroke: #111 !important;
+    }
+    .strength-col.selected .strength-dot {
+      border-color: #111 !important;
+    }
+    .decide-btn {
+      margin-top: 30px;
+      padding: 16px 48px;
+      font-size: 1.3em;
+      font-weight: bold;
+      background: #fff;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: background 0.2s, color 0.2s;
+    }
+    .decide-btn:hover {
+      background: #eee;
+      color: #111;
+    }
+    .icehot-panel {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+      transition: opacity 0.5s;
+    }
+    .icehot-panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .icehot-panel.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .icehot-inner {
+      background: #757575;
+      border: 20px solid #111;
+      border-radius: 0;
+      width: 90vw;
+      max-width: 520px;
+      height: 80vh;
+      max-height: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .icehot-title {
+      color: #fff;
+      font-size: 2em;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 60px;
+    }
+    .icehot-btn-row {
+      display: flex;
+      gap: 48px;
+      justify-content: center;
+      align-items: center;
+    }
+    .icehot-btn {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      border: 10px solid;
+      font-size: 2.2em;
+      font-weight: bold;
+      color: #fff;
+      background: transparent;
+      cursor: pointer;
+      outline: none;
+      transition: filter 0.2s;
+      letter-spacing: 2px;
+    }
+    .icehot-btn.ice {
+      background: #6ec1e4;
+      border-color: #29505c;
+    }
+    .icehot-btn.hot {
+      background: #d14d4d;
+      border-color: #5a2323;
+    }
+    .icehot-btn:active {
+      filter: brightness(0.9);
+    }
+    .icehot-panel .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: #222;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 1em;
+      cursor: pointer;
+      z-index: 30;
+    }
+    .icehot-btn.ice.selected {
+      filter: brightness(0.8);
+    }
+    .extract-panel {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 30;
+      transition: opacity 0.5s;
+    }
+    .extract-panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .extract-panel.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .extract-inner {
+      width: 90vw;
+      max-width: 520px;
+      height: 80vh;
+      max-height: 520px;
+      background: #757575;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 40px solid #111;
+      box-sizing: border-box;
+    }
+    .extract-text {
+      color: #fff;
+      font-size: 2.3em;
+      font-weight: bold;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    /* 完了・お礼画面 */
+    .thanks-panel {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 40;
+      transition: opacity 0.5s;
+    }
+    .thanks-panel.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .thanks-panel.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .thanks-inner {
+      width: 90vw;
+      max-width: 520px;
+      height: 80vh;
+      max-height: 520px;
+      background: #ddd;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 40px solid #111;
+      box-sizing: border-box;
+    }
+    .thanks-text {
+      color: #111;
+      font-size: 2em;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 40px;
+      letter-spacing: 2px;
+    }
+    .thanks-svg {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel visible" id="main-panel">
+      <p class="instruction">セットしてボタンを押してください</p>
+      <div class="buttons">
+        <div class="drink coffee">
+          <div class="cup-icon">
+            <!-- コーヒーカップSVG -->
+            <svg width="80" height="60" viewBox="0 0 80 60">
+              <ellipse cx="40" cy="50" rx="30" ry="8" fill="none" stroke="#fff" stroke-width="4"/>
+              <rect x="20" y="15" width="40" height="25" rx="10" fill="none" stroke="#fff" stroke-width="4"/>
+              <ellipse cx="40" cy="27" rx="18" ry="12" fill="none" stroke="#fff" stroke-width="4"/>
+              <path d="M60 30 Q70 35 60 40" fill="none" stroke="#fff" stroke-width="4"/>
+            </svg>
+          </div>
+          <div class="label">COFFEE</div>
+        </div>
+        <div class="drink latte">
+          <div class="cup-icon">
+            <!-- カフェラテカップSVG（同じ形状、色違い） -->
+            <svg width="80" height="60" viewBox="0 0 80 60">
+              <ellipse cx="40" cy="50" rx="30" ry="8" fill="none" stroke="#fff" stroke-width="4"/>
+              <rect x="20" y="15" width="40" height="25" rx="10" fill="none" stroke="#fff" stroke-width="4"/>
+              <ellipse cx="40" cy="27" rx="18" ry="12" fill="none" stroke="#fff" stroke-width="4"/>
+              <path d="M20 30 Q10 35 20 40" fill="none" stroke="#fff" stroke-width="4"/>
+            </svg>
+          </div>
+          <div class="label">CAFE<br>LATTE</div>
+        </div>
+      </div>
+    </div>
+    <div class="select-panel hidden" id="select-panel">
+      <button class="back-btn" onclick="showMainPanel()">← 戻る</button>
+      <div class="select-title">サイズ、濃さを選択してください</div>
+      <div class="size-row">
+        <div class="size-col" id="regular-size">
+          <!-- RegularカップSVG -->
+          <svg class="size-svg" width="80" height="90" viewBox="0 0 80 90">
+            <rect class="cup-outline" x="18" y="30" width="44" height="45" rx="8" fill="none" stroke="#fff" stroke-width="5"/>
+            <rect x="22" y="20" width="36" height="12" rx="3" fill="none" stroke="#fff" stroke-width="5"/>
+          </svg>
+          <div class="size-label">Regular</div>
+        </div>
+        <div class="size-col" id="large-size">
+          <!-- LargeカップSVG -->
+          <svg class="size-svg" width="100" height="110" viewBox="0 0 100 110">
+            <rect class="cup-outline" x="15" y="25" width="70" height="65" rx="10" fill="none" stroke="#fff" stroke-width="6"/>
+            <rect x="22" y="10" width="56" height="18" rx="4" fill="none" stroke="#fff" stroke-width="6"/>
+          </svg>
+          <div class="size-label">Large</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="strength-row">
+        <div class="strength-col" id="strength-weak">
+          <div class="strength-label">薄め</div>
+          <div class="strength-dot weak"></div>
+        </div>
+        <span class="strength-line"></span>
+        <div class="strength-col" id="strength-normal">
+          <div class="strength-label">普通</div>
+          <div class="strength-dot normal"></div>
+          <!-- 決定ボタン追加 -->
+          <button id="decide-btn" class="decide-btn">決定</button>
+        </div>
+        <span class="strength-line"></span>
+        <div class="strength-col" id="strength-strong">
+          <div class="strength-label">濃いめ</div>
+          <div class="strength-dot strong"></div>
+        </div>
+      </div>
+    </div>
+    <!-- 新しいICE/HOT選択画面 -->
+    <div class="icehot-panel hidden" id="icehot-panel">
+      <button class="back-btn" onclick="showSelectPanel()">← 戻る</button>
+      <div class="icehot-inner" id="icehot-inner">
+        <div class="icehot-title">アイス、ホットを選択してください</div>
+        <div class="icehot-btn-row">
+          <button class="icehot-btn ice" id="ice-btn">ICE</button>
+          <button class="icehot-btn hot" id="hot-btn">HOT</button>
+        </div>
+      </div>
+    </div>
+    <!-- 抽出中画面 -->
+    <div class="extract-panel hidden" id="extract-panel">
+      <div class="extract-inner">
+        <div class="extract-text">抽出しています…</div>
+      </div>
+    </div>
+    <!-- 完了・お礼画面 -->
+    <div class="thanks-panel hidden" id="thanks-panel">
+      <div class="thanks-inner">
+        <div class="thanks-text">ご利用ありがとうございました。</div>
+        <div class="thanks-svg">
+          <!-- ピクトグラム風：黒い線画で頭を下げている人間 -->
+          <svg width="140" height="220" viewBox="0 0 140 220" fill="none">
+            <!-- 胴体 -->
+            <path d="M40 70 Q20 90 40 120 L40 200 Q40 210 50 210 L62 210 Q70 210 70 200 L70 120 Q70 110 70 100" stroke="#444" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <path d="M100 70 Q120 90 100 120 L100 200 Q100 210 90 210 L78 210 Q70 210 70 200 L70 120 Q70 110 70 100" stroke="#444" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <!-- 頭 -->
+            <circle cx="70" cy="50" r="32" stroke="#444" stroke-width="7" fill="none"/>
+            <!-- 首 -->
+            <line x1="70" y1="82" x2="70" y2="100" stroke="#444" stroke-width="7" stroke-linecap="round"/>
+            <!-- 腕 -->
+            <path d="M40 90 Q55 120 70 120 Q85 120 100 90" stroke="#444" stroke-width="7" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function crossFade(showId, hideId) {
+      const showEl = document.getElementById(showId);
+      const hideEl = document.getElementById(hideId);
+      showEl.classList.remove('hidden');
+      showEl.classList.add('visible');
+      hideEl.classList.remove('visible');
+      hideEl.classList.add('hidden');
+    }
+
+    function showSelectPanel() {
+      crossFade('select-panel', 'main-panel');
+    }
+    function showMainPanel() {
+      crossFade('main-panel', 'select-panel');
+    }
+    function showIceHotPanel() {
+      crossFade('icehot-panel', 'select-panel');
+    }
+    function showExtractPanel() {
+      crossFade('extract-panel', 'icehot-panel');
+      // 7秒後にthanks画面へクロスフェード
+      setTimeout(function() {
+        showThanksPanel();
+      }, 7000);
+    }
+    function showThanksPanel() {
+      crossFade('thanks-panel', 'extract-panel');
+      // 5秒後に最初の画面へクロスフェード
+      setTimeout(function() {
+        crossFade('main-panel', 'thanks-panel');
+        resetPanelsToInitial();
+      }, 5000);
+    }
+
+    function resetPanelsToInitial() {
+      // サイズ・濃さ・ICE/HOT選択状態をリセット
+      document.getElementById('regular-size').classList.remove('selected');
+      document.getElementById('large-size').classList.remove('selected');
+      document.getElementById('strength-weak').classList.remove('selected');
+      document.getElementById('strength-normal').classList.remove('selected');
+      document.getElementById('strength-strong').classList.remove('selected');
+      document.getElementById('ice-btn').classList.remove('selected');
+      document.getElementById('hot-btn').classList.remove('selected');
+      // 必要なら他の入力状態もここでリセット
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      document.querySelector('.drink.coffee').addEventListener('click', showSelectPanel);
+      // Regularアイコン選択時に線画を黒くする
+      document.getElementById('regular-size').addEventListener('click', function() {
+        document.getElementById('regular-size').classList.add('selected');
+        document.getElementById('large-size').classList.remove('selected');
+      });
+      document.getElementById('large-size').addEventListener('click', function() {
+        document.getElementById('large-size').classList.add('selected');
+        document.getElementById('regular-size').classList.remove('selected');
+      });
+      // 濃さ選択時の枠色切り替え
+      document.getElementById('strength-weak').addEventListener('click', function() {
+        document.getElementById('strength-weak').classList.add('selected');
+        document.getElementById('strength-normal').classList.remove('selected');
+        document.getElementById('strength-strong').classList.remove('selected');
+      });
+      document.getElementById('strength-normal').addEventListener('click', function() {
+        document.getElementById('strength-normal').classList.add('selected');
+        document.getElementById('strength-weak').classList.remove('selected');
+        document.getElementById('strength-strong').classList.remove('selected');
+      });
+      document.getElementById('strength-strong').addEventListener('click', function() {
+        document.getElementById('strength-strong').classList.add('selected');
+        document.getElementById('strength-weak').classList.remove('selected');
+        document.getElementById('strength-normal').classList.remove('selected');
+      });
+      // 決定ボタンでICE/HOT画面へクロスフェード
+      document.getElementById('decide-btn').addEventListener('click', function() {
+        showIceHotPanel();
+      });
+      // ICEボタン押下時
+      document.getElementById('ice-btn').addEventListener('click', function() {
+        // 色を暗く
+        document.getElementById('ice-btn').classList.add('selected');
+        // HOTボタンは解除
+        document.getElementById('hot-btn').classList.remove('selected');
+        // 画面切り替え
+        setTimeout(showExtractPanel, 200); // 少しだけ暗くなったのが見えるように遅延
+      });
+      // HOTボタン押下時（色だけリセット、画面遷移はしない）
+      document.getElementById('hot-btn').addEventListener('click', function() {
+        document.getElementById('hot-btn').classList.add('selected');
+        document.getElementById('ice-btn').classList.remove('selected');
+        // ここで画面遷移はしない（必要ならshowExtractPanel()を追加）
+      });
+    });
+  </script>
+</body>
+</html>
